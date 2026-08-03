@@ -10,7 +10,7 @@ const { redirectToOriginalUrl } = require("./controllers/url.controller");
 
 // Middlewares
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true
 }));
 
@@ -21,11 +21,15 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/url", urlRoutes);
 
-// Public redirect route
+// Public Redirect Route
 app.get("/:shortCode", redirectToOriginalUrl);
 
+// Health Check
 app.get("/", (req, res) => {
-    res.send("API is running");
+    res.status(200).json({
+        success: true,
+        message: "API is running 🚀"
+    });
 });
 
 module.exports = app;
