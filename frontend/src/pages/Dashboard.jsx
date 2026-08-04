@@ -108,13 +108,13 @@ function Dashboard() {
     // Copy URL
     const copyUrl = (shortCode) => {
 
-        navigator.clipboard.writeText(
-            `http://localhost:3000/${shortCode}`
-        );
+    navigator.clipboard.writeText(
+        `${import.meta.env.VITE_BASE_URL}/${shortCode}`
+    );
 
-        alert("Copied");
+    alert("Copied");
 
-    };
+};
 
     return (
 
@@ -263,15 +263,15 @@ function Dashboard() {
                                                 <td>
 
                                                     <a
-                                                        href={`http://localhost:3000/${url.shortCode}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="text-blue-600"
-                                                    >
+    href={`${import.meta.env.VITE_BASE_URL}/${url.shortCode}`}
+    target="_blank"
+    rel="noreferrer"
+    className="text-blue-600 hover:underline"
+>
 
-                                                        {url.shortCode}
+    {`${import.meta.env.VITE_BASE_URL}/${url.shortCode}`}
 
-                                                    </a>
+</a>
 
                                                 </td>
 
