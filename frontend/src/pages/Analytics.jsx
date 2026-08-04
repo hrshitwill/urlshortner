@@ -115,12 +115,12 @@ function Analytics() {
                             </h3>
 
                             <a
-    href={`${import.meta.env.VITE_BASE_URL}/${url.shortCode}`}
+    href={`${process.env.VITE_BASE_URL}/${url.shortCode}`}
     target="_blank"
     rel="noreferrer"
     className="text-blue-600 hover:underline"
 >
-    {`${import.meta.env.VITE_BASE_URL}/${url.shortCode}`}
+    {`${process.env.VITE_BASE_URL}/${url.shortCode}`}
 </a>
 
                         </div>
