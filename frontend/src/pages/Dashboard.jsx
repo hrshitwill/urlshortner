@@ -4,49 +4,37 @@ import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
-
     const navigate = useNavigate();
 
     const { user, logout } = useAuth();
 
     const [urls, setUrls] = useState([]);
-
     const [originalUrl, setOriginalUrl] = useState("");
-
     const [loading, setLoading] = useState(false);
+
+    const BASE_URL = import.meta.env.VITE_BASE_URL;
 
     // Fetch URLs
     const fetchUrls = async () => {
-
         try {
-
             const res = await api.get("/url");
-
             setUrls(res.data.data);
-
         } catch (error) {
-
             console.log(error);
-
         }
-
     };
 
     useEffect(() => {
-
         fetchUrls();
-
     }, []);
 
     // Create URL
     const createShortUrl = async (e) => {
-
         e.preventDefault();
 
         if (!originalUrl) return;
 
         try {
-
             setLoading(true);
 
             await api.post("/url", {
@@ -54,21 +42,16 @@ function Dashboard() {
             });
 
             setOriginalUrl("");
-
             fetchUrls();
 
         } catch (error) {
-
             alert(
-                error.response?.data?.message
+                error.response?.data?.message ||
+                "Failed to create URL"
             );
-
         } finally {
-
             setLoading(false);
-
         }
-
     };
 
     // Delete URL
@@ -89,7 +72,8 @@ function Dashboard() {
         } catch (error) {
 
             alert(
-                error.response?.data?.message
+                error.response?.data?.message ||
+                "Failed to delete URL"
             );
 
         }
@@ -108,16 +92,15 @@ function Dashboard() {
     // Copy URL
     const copyUrl = (shortCode) => {
 
-    navigator.clipboard.writeText(
-        `${process.env.VITE_BASE_URL}/${shortCode}`
-    );
+        navigator.clipboard.writeText(
+            `${BASE_URL}/${shortCode}`
+        );
 
-    alert("Copied");
+        alert("Copied");
 
-};
+    };
 
     return (
-
         <div className="min-h-screen bg-gray-100">
 
             {/* Navbar */}
@@ -127,9 +110,7 @@ function Dashboard() {
                 <div className="max-w-6xl mx-auto flex justify-between items-center p-5">
 
                     <h1 className="text-3xl font-bold">
-
                         URL Shortener
-
                     </h1>
 
                     <div className="flex gap-5 items-center">
@@ -170,9 +151,7 @@ function Dashboard() {
                         placeholder="https://example.com"
                         value={originalUrl}
                         onChange={(e) =>
-                            setOriginalUrl(
-                                e.target.value
-                            )
+                            setOriginalUrl(e.target.value)
                         }
                         className="flex-1 border p-3 rounded"
                     />
@@ -181,11 +160,7 @@ function Dashboard() {
                         disabled={loading}
                         className="bg-blue-600 text-white px-6 rounded"
                     >
-                        {
-                            loading
-                                ? "Creating..."
-                                : "Shorten"
-                        }
+                        {loading ? "Creating..." : "Shorten"}
                     </button>
 
                 </form>
@@ -223,113 +198,93 @@ function Dashboard() {
                         <tbody>
 
                             {
+                                urls.length === 0 ? (
 
-                                urls.length === 0 ?
+                                    <tr>
 
-                                    (
+                                        <td
+                                            colSpan="4"
+                                            className="text-center p-8"
+                                        >
 
-                                        <tr>
+                                            No URLs Found
 
-                                            <td
-                                                colSpan="4"
-                                                className="text-center p-8"
-                                            >
+                                        </td>
 
-                                                No URLs Found
+                                    </tr>
+
+                                ) : (
+
+                                    urls.map((url) => (
+
+                                        <tr
+                                            key={url._id}
+                                            className="border-t"
+                                        >
+
+                                            <td className="p-4 break-all">
+                                                {url.originalUrl}
+                                            </td>
+
+                                            <td className="p-4">
+
+                                                <a
+                                                    href={`${BASE_URL}/${url.shortCode}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="text-blue-600 hover:underline break-all"
+                                                >
+                                                    {`${BASE_URL}/${url.shortCode}`}
+                                                </a>
+
+                                            </td>
+
+                                            <td>
+                                                {url.clicks}
+                                            </td>
+
+                                            <td>
+
+                                                <div className="flex gap-3">
+
+                                                    <button
+                                                        onClick={() =>
+                                                            copyUrl(
+                                                                url.shortCode
+                                                            )
+                                                        }
+                                                        className="text-green-600"
+                                                    >
+                                                        Copy
+                                                    </button>
+
+                                                    <Link
+                                                        to={`/analytics/${url._id}`}
+                                                        className="text-blue-600"
+                                                    >
+                                                        Analytics
+                                                    </Link>
+
+                                                    <button
+                                                        onClick={() =>
+                                                            deleteUrl(
+                                                                url._id
+                                                            )
+                                                        }
+                                                        className="text-red-600"
+                                                    >
+                                                        Delete
+                                                    </button>
+
+                                                </div>
 
                                             </td>
 
                                         </tr>
 
-                                    )
+                                    ))
 
-                                    :
-
-                                    (
-
-                                        urls.map((url) => (
-
-                                            <tr
-                                                key={url._id}
-                                                className="border-t"
-                                            >
-
-                                                <td className="p-4 break-all">
-
-                                                    {url.originalUrl}
-
-                                                </td>
-
-                                                <td>
-
-                                                    <a
-    href={`${process.env.VITE_BASE_URL}/${url.shortCode}`}
-    target="_blank"
-    rel="noreferrer"
-    className="text-blue-600 hover:underline"
->
-
-    {`${process.env.VITE_BASE_URL}/${url.shortCode}`}
-
-</a>
-
-                                                </td>
-
-                                                <td>
-
-                                                    {url.clicks}
-
-                                                </td>
-
-                                                <td>
-
-                                                    <div className="flex gap-3">
-
-                                                        <button
-                                                            onClick={() =>
-                                                                copyUrl(
-                                                                    url.shortCode
-                                                                )
-                                                            }
-                                                            className="text-green-600"
-                                                        >
-
-                                                            Copy
-
-                                                        </button>
-
-                                                        <Link
-                                                            to={`/analytics/${url._id}`}
-                                                            className="text-blue-600"
-                                                        >
-
-                                                            Analytics
-
-                                                        </Link>
-
-                                                        <button
-                                                            onClick={() =>
-                                                                deleteUrl(
-                                                                    url._id
-                                                                )
-                                                            }
-                                                            className="text-red-600"
-                                                        >
-
-                                                            Delete
-
-                                                        </button>
-
-                                                    </div>
-
-                                                </td>
-
-                                            </tr>
-
-                                        ))
-
-                                    )
-
+                                )
                             }
 
                         </tbody>
@@ -341,9 +296,7 @@ function Dashboard() {
             </div>
 
         </div>
-
     );
-
 }
 
 export default Dashboard;
