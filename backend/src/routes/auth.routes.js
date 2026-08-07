@@ -31,6 +31,10 @@ router.post(
 // Login
 router.post(
     "/login",
+    (req, res, next) => {
+        console.log("IP:", req.ip);
+        next();
+    },
     loginLimiter,
     validateLogin,
     loginUser
