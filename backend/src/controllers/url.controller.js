@@ -1,3 +1,4 @@
+const { redisClient } = require("../config/redis");
 const Url = require("../models/url.model");
 const { nanoid } = require("nanoid");
 
@@ -47,31 +48,65 @@ const url = await Url.create({
         });
     }
 };
-const redirectToOriginalUrl = async (req, res) => {
+const redirectToOriginalUrl = async (req, res, next) => {
+
     try {
+
         const { shortCode } = req.params;
 
+        // 1. Check Redis Cache
+        const cachedUrl = await redisClient.get(shortCode);
+
+        if (cachedUrl) {
+
+            console.log("✅ Cache Hit");
+
+            await Url.findOneAndUpdate(
+                { shortCode },
+                { $inc: { clicks: 1 } }
+            );
+
+            return res.redirect(cachedUrl);
+
+        }
+
+        console.log("❌ Cache Miss");
+
+        // 2. Fetch from MongoDB
         const url = await Url.findOne({ shortCode });
 
         if (!url) {
+
             return res.status(404).json({
+                success: false,
                 message: "Short URL not found"
             });
+
         }
 
+        // 3. Store in Redis
+        await redisClient.set(
+            shortCode,
+            url.originalUrl,
+            {
+                EX: 3600
+            }
+        );
+
+        // 4. Increase Click Count
         url.clicks++;
 
         await url.save();
 
+        // 5. Redirect
         return res.redirect(url.originalUrl);
 
     } catch (error) {
-        console.error(error);
 
-        return res.status(500).json({
-            message: "Internal Server Error"
-        });
+        next(error);
+
     }
+
 };
 const getAllUrls = async (req, res) => {
     try {
