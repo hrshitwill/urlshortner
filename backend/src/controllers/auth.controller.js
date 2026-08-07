@@ -5,20 +5,15 @@ const jwt = require("jsonwebtoken");
 // Register User
 const registerUser = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
 
-        // Validate Input
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                message: "All fields are required"
-            });
-        }
+        const { name, email, password } = req.body;
 
         // Check Existing User
         const existingUser = await User.findOne({ email });
 
         if (existingUser) {
             return res.status(400).json({
+                success: false,
                 message: "User already exists"
             });
         }
@@ -34,6 +29,7 @@ const registerUser = async (req, res) => {
         });
 
         return res.status(201).json({
+            success: true,
             message: "User registered successfully",
             user: {
                 id: user._id,
@@ -43,11 +39,14 @@ const registerUser = async (req, res) => {
         });
 
     } catch (error) {
+
         console.error(error);
 
         return res.status(500).json({
+            success: false,
             message: "Internal Server Error"
         });
+
     }
 };
 
@@ -57,18 +56,12 @@ const loginUser = async (req, res) => {
 
         const { email, password } = req.body;
 
-        // Validate Input
-        if (!email || !password) {
-            return res.status(400).json({
-                message: "Email and Password are required"
-            });
-        }
-
         // Find User
         const user = await User.findOne({ email });
 
         if (!user) {
             return res.status(401).json({
+                success: false,
                 message: "Invalid email or password"
             });
         }
@@ -81,6 +74,7 @@ const loginUser = async (req, res) => {
 
         if (!isMatch) {
             return res.status(401).json({
+                success: false,
                 message: "Invalid email or password"
             });
         }
@@ -98,13 +92,17 @@ const loginUser = async (req, res) => {
 
         // Store JWT in Cookie
         res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    maxAge: 7 * 24 * 60 * 60 * 1000
-});
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite:
+                process.env.NODE_ENV === "production"
+                    ? "none"
+                    : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000
+        });
 
         return res.status(200).json({
+            success: true,
             message: "Login successful",
             user: {
                 id: user._id,
@@ -114,24 +112,37 @@ const loginUser = async (req, res) => {
         });
 
     } catch (error) {
+
         console.error(error);
 
         return res.status(500).json({
+            success: false,
             message: "Internal Server Error"
         });
+
     }
 };
 
 // Logout User
 const logoutUser = (req, res) => {
 
-    res.clearCookie("token");
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite:
+            process.env.NODE_ENV === "production"
+                ? "none"
+                : "lax"
+    });
 
     return res.status(200).json({
+        success: true,
         message: "Logout successful"
     });
+
 };
 
+// Get Current User
 const getCurrentUser = async (req, res) => {
     try {
 
@@ -140,6 +151,7 @@ const getCurrentUser = async (req, res) => {
 
         if (!user) {
             return res.status(404).json({
+                success: false,
                 message: "User not found"
             });
         }
@@ -150,11 +162,14 @@ const getCurrentUser = async (req, res) => {
         });
 
     } catch (error) {
+
         console.error(error);
 
         return res.status(500).json({
+            success: false,
             message: "Internal Server Error"
         });
+
     }
 };
 

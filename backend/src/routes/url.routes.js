@@ -4,19 +4,43 @@ const router = express.Router();
 const authMiddleware = require("../middlewares/auth.middleware");
 
 const {
+    validateUrl
+} = require("../middlewares/validate.middleware");
+
+const {
     createShortUrl,
     getAllUrls,
     deleteUrl,
     getUrlAnalytics
 } = require("../controllers/url.controller");
 
-router.post("/", authMiddleware, createShortUrl);
+// Create Short URL
+router.post(
+    "/",
+    authMiddleware,
+    validateUrl,
+    createShortUrl
+);
 
-router.get("/", authMiddleware, getAllUrls);
+// Get All URLs
+router.get(
+    "/",
+    authMiddleware,
+    getAllUrls
+);
 
-router.get("/:id/analytics", authMiddleware, getUrlAnalytics);
+// Get Analytics
+router.get(
+    "/:id/analytics",
+    authMiddleware,
+    getUrlAnalytics
+);
 
-router.delete("/:id", authMiddleware, deleteUrl);
-
+// Delete URL
+router.delete(
+    "/:id",
+    authMiddleware,
+    deleteUrl
+);
 
 module.exports = router;
