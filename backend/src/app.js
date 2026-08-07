@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth.routes");
 const { redirectToOriginalUrl } = require("./controllers/url.controller");
 
 const app = express();
+app.set("trust proxy", 1);
 
 // Security
 app.use(helmet());
