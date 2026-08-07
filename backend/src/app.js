@@ -4,7 +4,6 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const morgan = require("morgan");
 
-const apiLimiter = require("./middlewares/rateLimiter");
 const errorHandler = require("./middlewares/error.middleware");
 
 const urlRoutes = require("./routes/url.routes");
@@ -40,9 +39,6 @@ app.use(express.json());
 
 // Cookie Parser
 app.use(cookieParser());
-
-// Rate Limiter
-app.use("/api", apiLimiter);
 
 // Routes
 app.use("/api/auth", authRoutes);

@@ -8,11 +8,18 @@ const {
 } = require("../middlewares/validate.middleware");
 
 const {
+    apiLimiter
+} = require("../middlewares/rateLimiter");
+
+const {
     createShortUrl,
     getAllUrls,
     deleteUrl,
     getUrlAnalytics
 } = require("../controllers/url.controller");
+
+// Apply API rate limiter to all routes in this file
+router.use(apiLimiter);
 
 // Create Short URL
 router.post(

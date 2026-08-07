@@ -9,6 +9,11 @@ const {
 } = require("../middlewares/validate.middleware");
 
 const {
+    loginLimiter,
+    registerLimiter
+} = require("../middlewares/rateLimiter");
+
+const {
     registerUser,
     loginUser,
     logoutUser,
@@ -18,6 +23,7 @@ const {
 // Register
 router.post(
     "/register",
+    registerLimiter,
     validateRegister,
     registerUser
 );
@@ -25,6 +31,7 @@ router.post(
 // Login
 router.post(
     "/login",
+    loginLimiter,
     validateLogin,
     loginUser
 );
