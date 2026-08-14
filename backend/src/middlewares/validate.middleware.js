@@ -43,8 +43,7 @@ const validateLogin = (req, res, next) => {
 };
 
 const validateUrl = (req, res, next) => {
-
-    const { originalUrl } = req.body;
+    const { originalUrl } = req.body || {};
 
     if (!originalUrl) {
         return res.status(400).json({
@@ -55,10 +54,10 @@ const validateUrl = (req, res, next) => {
 
     try {
         new URL(originalUrl);
-    } catch {
+    } catch (error) {
         return res.status(400).json({
             success: false,
-            message: "Invalid URL"
+            message: "Please provide a valid URL"
         });
     }
 

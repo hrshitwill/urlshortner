@@ -1,49 +1,84 @@
 const { redisClient } = require("../config/redis");
 const Url = require("../models/url.model");
 const { nanoid } = require("nanoid");
+const generateQRCode = require("../utils/qrCode");
 
 const createShortUrl = async (req, res) => {
     try {
         const { originalUrl } = req.body;
 
-if (!originalUrl) {
-    return res.status(400).json({
-        message: "Original URL is required"
-    });
-}
-try {
-    new URL(originalUrl);
-} catch (error) {
-    return res.status(400).json({
-        message: "Invalid URL"
-    });
-}
-const existingUrl = await Url.findOne({ originalUrl, user: req.user.id });
+        if (!originalUrl) {
+            return res.status(400).json({
+                success: false,
+                message: "Original URL is required"
+            });
+        }
 
-if (existingUrl) {
-    return res.status(200).json({
-        message: "Short URL already exists",
-        shortUrl: `${process.env.BASE_URL}/${existingUrl.shortCode}`
-    });
-}
+        try {
+            new URL(originalUrl);
+        } catch (error) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid URL"
+            });
+        }
 
-const shortCode = nanoid(7);
+        // Check whether this URL already exists for this user
+        const existingUrl = await Url.findOne({
+            originalUrl,
+            user: req.user.id
+        });
 
-const url = await Url.create({
-    originalUrl,
-    shortCode,
-    user: req.user.id
-});
+        if (existingUrl) {
+
+            const shortUrl =
+                `${process.env.BASE_URL}/${existingUrl.shortCode}`;
+
+            const qrCode = await generateQRCode(shortUrl);
+
+            return res.status(200).json({
+                success: true,
+                message: "Short URL already exists",
+                data: {
+                    originalUrl: existingUrl.originalUrl,
+                    shortCode: existingUrl.shortCode,
+                    shortUrl,
+                    qrCode
+                }
+            });
+        }
+
+        // Generate short code
+        const shortCode = nanoid(7);
+
+        // Save URL
+        const url = await Url.create({
+            originalUrl,
+            shortCode,
+            user: req.user.id
+        });
+
+        const shortUrl =
+            `${process.env.BASE_URL}/${url.shortCode}`;
+
+        // Generate QR Code
+        const qrCode = await generateQRCode(shortUrl);
 
         return res.status(201).json({
+            success: true,
             message: "Short URL created successfully",
-            shortUrl: `${process.env.BASE_URL}/${url.shortCode}`
+            data: {
+                originalUrl: url.originalUrl,
+                shortCode: url.shortCode,
+                shortUrl,
+            }
         });
 
     } catch (error) {
         console.error(error);
 
         return res.status(500).json({
+            success: false,
             message: "Internal Server Error"
         });
     }
@@ -113,11 +148,11 @@ const getAllUrls = async (req, res) => {
         const urls = await Url.find({
             user: req.user.id
         })
-            .select("originalUrl shortCode clicks createdAt")
+            .select("originalUrl shortCode clicks createdAt updatedAt")
             .sort({ createdAt: -1 });
+
         return res.status(200).json({
             success: true,
-            count: urls.length,
             data: urls
         });
 
@@ -125,7 +160,8 @@ const getAllUrls = async (req, res) => {
         console.error(error);
 
         return res.status(500).json({
-            message: "Internal Server Error"
+            success: false,
+            message: "Failed to fetch URLs"
         });
     }
 };
@@ -186,10 +222,51 @@ const getUrlAnalytics = async (req, res) => {
         });
     }
 };
+const generateUrlQRCode = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const url = await Url.findOne({
+            _id: id,
+            user: req.user.id
+        });
+
+        if (!url) {
+            return res.status(404).json({
+                success: false,
+                message: "URL not found"
+            });
+        }
+
+        const shortUrl =
+            `${process.env.BASE_URL}/${url.shortCode}`;
+
+        const qrCode =
+            await generateQRCode(shortUrl);
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                shortCode: url.shortCode,
+                shortUrl,
+                qrCode
+            }
+        });
+
+    } catch (error) {
+        console.error("QR generation error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to generate QR code"
+        });
+    }
+};
 module.exports = {
     createShortUrl,
     redirectToOriginalUrl,
     getAllUrls,
     deleteUrl,
-    getUrlAnalytics
+    getUrlAnalytics,
+    generateUrlQRCode
 };

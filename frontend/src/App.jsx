@@ -1,68 +1,44 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Profile from "./pages/Profile";
 import Analytics from "./pages/Analytics";
-
-import ProtectedRoute from "./components/ProtectedRoute";
+import Profile from "./pages/Profile";
 
 function App() {
+
     return (
-        <BrowserRouter>
 
-            <Routes>
+        <Routes>
 
-                {/* Redirect */}
-                <Route
-                    path="*"
-                    element={<Navigate to="/" replace />}
-                />
+            <Route
+                path="/login"
+                element={<Login />}
+            />
 
-                {/* Public Routes */}
-                <Route
-                    path="/login"
-                    element={<Login />}
-                />
+            <Route
+                path="/register"
+                element={<Register />}
+            />
 
-                <Route
-                    path="/register"
-                    element={<Register />}
-                />
+            <Route
+                path="/dashboard"
+                element={<Dashboard />}
+            />
 
-                {/* Protected Routes */}
+            <Route
+                path="/analytics/:id"
+                element={<Analytics />}
+            />
 
-                <Route
-                    path="/"
-                    element={
-                        <ProtectedRoute>
-                            <Dashboard />
-                        </ProtectedRoute>
-                    }
-                />
+            <Route
+                path="/profile"
+                element={<Profile />}
+            />
 
-                <Route
-                    path="/profile"
-                    element={
-                        <ProtectedRoute>
-                            <Profile />
-                        </ProtectedRoute>
-                    }
-                />
+        </Routes>
 
-                <Route
-                    path="/analytics/:id"
-                    element={
-                        <ProtectedRoute>
-                            <Analytics />
-                        </ProtectedRoute>
-                    }
-                />
-
-            </Routes>
-
-        </BrowserRouter>
     );
 }
 

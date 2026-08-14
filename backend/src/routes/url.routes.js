@@ -15,7 +15,9 @@ const {
     createShortUrl,
     getAllUrls,
     deleteUrl,
-    getUrlAnalytics
+    getUrlAnalytics,
+    generateUrlQRCode
+
 } = require("../controllers/url.controller");
 
 // Apply API rate limiter to all routes in this file
@@ -41,6 +43,12 @@ router.get(
     "/:id/analytics",
     authMiddleware,
     getUrlAnalytics
+);
+
+router.get(
+    "/:id/qr",
+    authMiddleware,
+    generateUrlQRCode
 );
 
 // Delete URL

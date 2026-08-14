@@ -8,10 +8,12 @@ const errorHandler = require("./middlewares/error.middleware");
 
 const urlRoutes = require("./routes/url.routes");
 const authRoutes = require("./routes/auth.routes");
-const { redirectToOriginalUrl } = require("./controllers/url.controller");
+
+const {
+    redirectToOriginalUrl
+} = require("./controllers/url.controller");
 
 const app = express();
-app.set("trust proxy", 1);
 
 // Security
 app.use(helmet());
@@ -26,17 +28,20 @@ const allowedOrigins = [
 
 app.use(cors({
     origin(origin, callback) {
+
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error("Not allowed by CORS"));
         }
+
     },
     credentials: true
 }));
 
 // Body Parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Cookie Parser
 app.use(cookieParser());
@@ -45,7 +50,7 @@ app.use(cookieParser());
 app.use("/api/auth", authRoutes);
 app.use("/api/url", urlRoutes);
 
-// Redirect Route
+// Public Redirect
 app.get("/:shortCode", redirectToOriginalUrl);
 
 // Health Check
