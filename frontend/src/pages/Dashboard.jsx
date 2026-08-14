@@ -8,27 +8,30 @@ function Dashboard() {
 
     const { user, logout } = useAuth();
 
+    // =========================
+    // STATE
+    // =========================
+
     const [urls, setUrls] = useState([]);
     const [originalUrl, setOriginalUrl] = useState("");
-    const [loading, setLoading] = useState(false);
 
-    // QR states
+    const [loading, setLoading] = useState(false);
+    const [qrLoading, setQrLoading] = useState(false);
+
     const [qrCode, setQrCode] = useState(null);
     const [qrShortUrl, setQrShortUrl] = useState("");
-    const [qrLoading, setQrLoading] = useState(false);
 
     const BASE_URL = import.meta.env.VITE_BASE_URL;
 
     // =========================
-    // Fetch URLs
+    // FETCH URLS
     // =========================
 
     const fetchUrls = async () => {
         try {
             const res = await api.get("/url");
 
-            setUrls(res.data.data || []);
-
+            setUrls(res.data?.data || []);
         } catch (error) {
             console.error("Failed to fetch URLs:", error);
 
@@ -43,13 +46,15 @@ function Dashboard() {
     }, []);
 
     // =========================
-    // Create Short URL
+    // CREATE SHORT URL
     // =========================
 
     const createShortUrl = async (e) => {
         e.preventDefault();
 
-        if (!originalUrl.trim()) {
+        const value = originalUrl.trim();
+
+        if (!value) {
             alert("Please enter a URL");
             return;
         }
@@ -58,7 +63,7 @@ function Dashboard() {
             setLoading(true);
 
             await api.post("/url", {
-                originalUrl: originalUrl.trim()
+                originalUrl: value
             });
 
             setOriginalUrl("");
@@ -66,7 +71,7 @@ function Dashboard() {
             await fetchUrls();
 
         } catch (error) {
-            console.error(error);
+            console.error("Create URL error:", error);
 
             alert(
                 error.response?.data?.message ||
@@ -79,11 +84,10 @@ function Dashboard() {
     };
 
     // =========================
-    // Delete URL
+    // DELETE URL
     // =========================
 
     const deleteUrl = async (id) => {
-
         const confirmDelete = window.confirm(
             "Are you sure you want to delete this URL?"
         );
@@ -91,14 +95,12 @@ function Dashboard() {
         if (!confirmDelete) return;
 
         try {
-
             await api.delete(`/url/${id}`);
 
             await fetchUrls();
 
         } catch (error) {
-
-            console.error(error);
+            console.error("Delete URL error:", error);
 
             alert(
                 error.response?.data?.message ||
@@ -108,105 +110,115 @@ function Dashboard() {
     };
 
     // =========================
-    // Logout
+    // LOGOUT
     // =========================
 
     const handleLogout = async () => {
-
         try {
-
             await logout();
 
             navigate("/login");
 
         } catch (error) {
-
             console.error("Logout failed:", error);
         }
     };
 
     // =========================
-    // Copy URL
+    // COPY URL
     // =========================
 
     const copyUrl = async (shortCode) => {
-
         const shortUrl = `${BASE_URL}/${shortCode}`;
 
         try {
-
             await navigator.clipboard.writeText(shortUrl);
 
             alert("Short URL copied!");
 
         } catch (error) {
-
-            console.error(error);
+            console.error("Copy error:", error);
 
             alert("Failed to copy URL");
         }
     };
 
     // =========================
-    // Generate QR Code
+    // OPEN QR CODE
     // =========================
 
     const openQRCode = async (id) => {
-
         try {
-
             setQrLoading(true);
 
             const res = await api.get(`/url/${id}/qr`);
 
-            setQrCode(res.data.data.qrCode);
+            console.log("QR API RESPONSE:", res.data);
 
-            setQrShortUrl(res.data.data.shortUrl);
+            const qr = res.data?.data?.qrCode;
+            const shortUrl = res.data?.data?.shortUrl;
+
+            if (!qr) {
+                throw new Error(
+                    "QR code was not returned by the server"
+                );
+            }
+
+            setQrCode(qr);
+            setQrShortUrl(shortUrl || "");
 
         } catch (error) {
-
-            console.error("QR error:", error);
+            console.error("QR generation failed:", error);
 
             alert(
                 error.response?.data?.message ||
+                error.message ||
                 "Failed to generate QR code"
             );
 
         } finally {
-
             setQrLoading(false);
         }
     };
 
     // =========================
-    // Close QR Modal
+    // CLOSE QR MODAL
     // =========================
 
     const closeQRCode = () => {
-
         setQrCode(null);
         setQrShortUrl("");
     };
 
     // =========================
-    // Download QR
+    // DOWNLOAD QR
     // =========================
 
     const downloadQRCode = () => {
-
         if (!qrCode) return;
 
-        const link = document.createElement("a");
+        try {
+            const link = document.createElement("a");
 
-        link.href = qrCode;
-        link.download = "short-url-qr-code.png";
+            link.href = qrCode;
+            link.download = "short-url-qr-code.png";
 
-        document.body.appendChild(link);
+            document.body.appendChild(link);
 
-        link.click();
+            link.click();
 
-        document.body.removeChild(link);
+            document.body.removeChild(link);
+
+        } catch (error) {
+            console.error("QR download error:", error);
+
+            alert("Failed to download QR code");
+        }
     };
+
+    // =========================
+    // JSX
+    // =========================
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -215,7 +227,7 @@ function Dashboard() {
                 NAVBAR
             ========================= */}
 
-            <div className="bg-white shadow">
+            <nav className="bg-white shadow">
 
                 <div className="max-w-6xl mx-auto flex justify-between items-center p-5">
 
@@ -229,7 +241,7 @@ function Dashboard() {
                             to="/profile"
                             className="text-blue-600 hover:underline"
                         >
-                            {user?.name}
+                            {user?.name || "Profile"}
                         </Link>
 
                         <button
@@ -243,15 +255,13 @@ function Dashboard() {
 
                 </div>
 
-            </div>
-
+            </nav>
 
             {/* =========================
                 MAIN CONTENT
             ========================= */}
 
-            <div className="max-w-6xl mx-auto mt-10 px-4">
-
+            <main className="max-w-6xl mx-auto mt-10 px-4">
 
                 {/* =========================
                     CREATE URL
@@ -293,7 +303,6 @@ function Dashboard() {
 
                 </div>
 
-
                 {/* =========================
                     URL TABLE
                 ========================= */}
@@ -307,7 +316,6 @@ function Dashboard() {
                         </h2>
 
                     </div>
-
 
                     <div className="overflow-x-auto">
 
@@ -336,7 +344,6 @@ function Dashboard() {
                                 </tr>
 
                             </thead>
-
 
                             <tbody>
 
@@ -367,13 +374,10 @@ function Dashboard() {
                                             <td className="p-4 max-w-xs">
 
                                                 <div className="break-all">
-
                                                     {url.originalUrl}
-
                                                 </div>
 
                                             </td>
-
 
                                             {/* Short URL */}
 
@@ -390,15 +394,11 @@ function Dashboard() {
 
                                             </td>
 
-
                                             {/* Clicks */}
 
                                             <td className="p-4 text-center">
-
                                                 {url.clicks}
-
                                             </td>
-
 
                                             {/* Actions */}
 
@@ -406,10 +406,10 @@ function Dashboard() {
 
                                                 <div className="flex gap-3 items-center justify-center flex-wrap">
 
-
-                                                    {/* Copy */}
+                                                    {/* COPY */}
 
                                                     <button
+                                                        type="button"
                                                         onClick={() =>
                                                             copyUrl(
                                                                 url.shortCode
@@ -420,22 +420,25 @@ function Dashboard() {
                                                         Copy
                                                     </button>
 
-
-                                                    {/* QR */}
+                                                    {/* QR CODE */}
 
                                                     <button
+                                                        type="button"
                                                         onClick={() =>
                                                             openQRCode(
                                                                 url._id
                                                             )
                                                         }
-                                                        className="text-purple-600 hover:underline"
+                                                        disabled={qrLoading}
+                                                        className="text-purple-600 hover:underline disabled:text-gray-400"
                                                     >
-                                                        QR Code
+                                                        {qrLoading
+                                                            ? "Generating..."
+                                                            : "QR Code"
+                                                        }
                                                     </button>
 
-
-                                                    {/* Analytics */}
+                                                    {/* ANALYTICS */}
 
                                                     <Link
                                                         to={`/analytics/${url._id}`}
@@ -444,10 +447,10 @@ function Dashboard() {
                                                         Analytics
                                                     </Link>
 
-
-                                                    {/* Delete */}
+                                                    {/* DELETE */}
 
                                                     <button
+                                                        type="button"
                                                         onClick={() =>
                                                             deleteUrl(
                                                                 url._id
@@ -476,8 +479,7 @@ function Dashboard() {
 
                 </div>
 
-            </div>
-
+            </main>
 
             {/* =========================
                 QR CODE MODAL
@@ -485,42 +487,74 @@ function Dashboard() {
 
             {qrCode && (
 
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+                    onClick={closeQRCode}
+                >
 
-                    <div className="bg-white rounded-xl p-8 shadow-xl w-96 text-center">
+                    <div
+                        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
 
-                        <h2 className="text-2xl font-bold mb-2">
-                            QR Code
-                        </h2>
+                        {/* Header */}
 
-                        <p className="text-gray-500 text-sm mb-5 break-all">
+                        <div className="flex items-center justify-between mb-5">
+
+                            <h2 className="text-2xl font-bold">
+                                Your QR Code
+                            </h2>
+
+                            <button
+                                type="button"
+                                onClick={closeQRCode}
+                                className="text-2xl text-gray-500 hover:text-black"
+                            >
+                                ×
+                            </button>
+
+                        </div>
+
+                        {/* QR */}
+
+                        <div className="flex justify-center">
+
+                            <div className="rounded-xl border bg-white p-4">
+
+                                <img
+                                    src={qrCode}
+                                    alt="QR Code"
+                                    width="256"
+                                    height="256"
+                                    className="block"
+                                />
+
+                            </div>
+
+                        </div>
+
+                        {/* Short URL */}
+
+                        <p className="mt-5 text-center text-sm text-gray-600 break-all">
                             {qrShortUrl}
                         </p>
 
-
-                        {/* QR Image */}
-
-                        <img
-                            src={qrCode}
-                            alt="QR Code"
-                            className="w-64 h-64 mx-auto border p-2"
-                        />
-
-
                         {/* Buttons */}
 
-                        <div className="flex justify-center gap-4 mt-6">
+                        <div className="mt-6 flex gap-3">
 
                             <button
+                                type="button"
                                 onClick={downloadQRCode}
-                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded"
+                                className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700"
                             >
-                                Download
+                                Download QR
                             </button>
 
                             <button
+                                type="button"
                                 onClick={closeQRCode}
-                                className="bg-gray-300 hover:bg-gray-400 px-5 py-2 rounded"
+                                className="flex-1 rounded-lg bg-gray-200 px-4 py-3 hover:bg-gray-300"
                             >
                                 Close
                             </button>
