@@ -1,25 +1,28 @@
 const rateLimit = require("express-rate-limit");
+const { ipKeyGenerator } = require("express-rate-limit");
 
 const loginLimiter = rateLimit({
-    windowMs: 5 * 60 * 1000,
-    max: 5,
+    windowMs: 15 * 60 * 1000,
+    max: 10,
 
     keyGenerator: (req) => {
-        return `${req.ip}-${req.body.email}`;
+        return ipKeyGenerator(req.ip);
     },
-
-    standardHeaders: true,
-    legacyHeaders: false,
 
     message: {
         success: false,
-        message: "Too many login after 5 minutes attempts."
+        message: "Too many login attempts. Please try again in 15 minutes."
     }
 });
 
 const registerLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
+
+    keyGenerator: (req) => {
+        return ipKeyGenerator(req.ip);
+    },
+
     message: {
         success: false,
         message: "Too many registration attempts. Please try again later."
@@ -29,6 +32,11 @@ const registerLimiter = rateLimit({
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 300,
+
+    keyGenerator: (req) => {
+        return ipKeyGenerator(req.ip);
+    },
+
     message: {
         success: false,
         message: "Too many requests. Please try again later."
