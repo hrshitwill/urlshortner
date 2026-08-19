@@ -5,23 +5,36 @@ import { useAuth } from "../context/AuthContext";
 
 function Dashboard() {
     const navigate = useNavigate();
-
     const { user, logout } = useAuth();
 
     // =========================
-    // STATE
+    // URL STATES
     // =========================
 
     const [urls, setUrls] = useState([]);
+
     const [originalUrl, setOriginalUrl] = useState("");
+    const [customCode, setCustomCode] = useState("");
+    const [expirationDays, setExpirationDays] = useState("");
 
     const [loading, setLoading] = useState(false);
+
+    // =========================
+    // QR STATES
+    // =========================
+
+    const [showQR, setShowQR] = useState(false);
+    const [qrCode, setQrCode] = useState("");
+    const [qrShortUrl, setQrShortUrl] = useState("");
     const [qrLoading, setQrLoading] = useState(false);
 
-    const [qrCode, setQrCode] = useState(null);
-    const [qrShortUrl, setQrShortUrl] = useState("");
+    // =========================
+    // BASE URL
+    // =========================
 
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
+    const BASE_URL =
+        import.meta.env.VITE_BASE_URL ||
+        "http://localhost:3000";
 
     // =========================
     // FETCH URLS
@@ -31,15 +44,19 @@ function Dashboard() {
         try {
             const res = await api.get("/url");
 
-            setUrls(res.data?.data || []);
-        } catch (error) {
-            console.error("Failed to fetch URLs:", error);
+            setUrls(res.data.data || []);
 
-            if (error.response?.status === 401) {
-                navigate("/login");
-            }
+        } catch (error) {
+            console.error(
+                "Fetch URLs error:",
+                error.response?.data || error
+            );
         }
     };
+
+    // =========================
+    // LOAD URLS
+    // =========================
 
     useEffect(() => {
         fetchUrls();
@@ -53,7 +70,9 @@ function Dashboard() {
         e.preventDefault();
 
         const value = originalUrl.trim();
+        const custom = customCode.trim();
 
+        // Validate URL
         if (!value) {
             alert("Please enter a URL");
             return;
@@ -62,16 +81,45 @@ function Dashboard() {
         try {
             setLoading(true);
 
-            await api.post("/url", {
-                originalUrl: value
+            const response = await api.post("/url", {
+                originalUrl: value,
+
+                // Custom alias
+                customCode: custom,
+
+                // Expiration
+                expirationDays:
+                    expirationDays || undefined
             });
 
-            setOriginalUrl("");
+            console.log(
+                "REQUEST SENT:",
+                {
+                    originalUrl: value,
+                    customCode: custom,
+                    expirationDays
+                }
+            );
 
+            console.log(
+                "SERVER RESPONSE:",
+                response.data
+            );
+
+            // Clear form
+            setOriginalUrl("");
+            setCustomCode("");
+            setExpirationDays("");
+
+            // Refresh URLs
             await fetchUrls();
 
         } catch (error) {
-            console.error("Create URL error:", error);
+
+            console.error(
+                "Create URL error:",
+                error.response?.data || error
+            );
 
             alert(
                 error.response?.data?.message ||
@@ -88,19 +136,27 @@ function Dashboard() {
     // =========================
 
     const deleteUrl = async (id) => {
+
         const confirmDelete = window.confirm(
             "Are you sure you want to delete this URL?"
         );
 
-        if (!confirmDelete) return;
+        if (!confirmDelete) {
+            return;
+        }
 
         try {
+
             await api.delete(`/url/${id}`);
 
             await fetchUrls();
 
         } catch (error) {
-            console.error("Delete URL error:", error);
+
+            console.error(
+                "Delete error:",
+                error.response?.data || error
+            );
 
             alert(
                 error.response?.data?.message ||
@@ -114,13 +170,19 @@ function Dashboard() {
     // =========================
 
     const handleLogout = async () => {
+
         try {
+
             await logout();
 
             navigate("/login");
 
         } catch (error) {
-            console.error("Logout failed:", error);
+
+            console.error(
+                "Logout error:",
+                error
+            );
         }
     };
 
@@ -129,95 +191,119 @@ function Dashboard() {
     // =========================
 
     const copyUrl = async (shortCode) => {
-        const shortUrl = `${BASE_URL}/${shortCode}`;
 
         try {
-            await navigator.clipboard.writeText(shortUrl);
+
+            const shortUrl =
+                `${BASE_URL}/${shortCode}`;
+
+            await navigator.clipboard.writeText(
+                shortUrl
+            );
 
             alert("Short URL copied!");
 
         } catch (error) {
-            console.error("Copy error:", error);
+
+            console.error(
+                "Copy error:",
+                error
+            );
 
             alert("Failed to copy URL");
         }
     };
 
     // =========================
-    // OPEN QR CODE
+    // QR CODE
     // =========================
 
     const openQRCode = async (id) => {
+
         try {
+
+            setShowQR(true);
             setQrLoading(true);
 
-            const res = await api.get(`/url/${id}/qr`);
+            setQrCode("");
+            setQrShortUrl("");
 
-            console.log("QR API RESPONSE:", res.data);
+            const res =
+                await api.get(`/url/${id}/qr`);
 
-            const qr = res.data?.data?.qrCode;
-            const shortUrl = res.data?.data?.shortUrl;
+            console.log(
+                "QR RESPONSE:",
+                res.data
+            );
 
-            if (!qr) {
-                throw new Error(
-                    "QR code was not returned by the server"
-                );
-            }
+            setQrCode(
+                res.data.data.qrCode
+            );
 
-            setQrCode(qr);
-            setQrShortUrl(shortUrl || "");
+            setQrShortUrl(
+                res.data.data.shortUrl
+            );
 
         } catch (error) {
-            console.error("QR generation failed:", error);
+
+            console.error(
+                "QR error:",
+                error.response?.data || error
+            );
+
+            setShowQR(false);
 
             alert(
                 error.response?.data?.message ||
-                error.message ||
                 "Failed to generate QR code"
             );
 
         } finally {
+
             setQrLoading(false);
         }
     };
 
     // =========================
-    // CLOSE QR MODAL
+    // CLOSE QR
     // =========================
 
-    const closeQRCode = () => {
-        setQrCode(null);
+    const closeQR = () => {
+
+        setShowQR(false);
+
+        setQrCode("");
         setQrShortUrl("");
     };
 
     // =========================
-    // DOWNLOAD QR
+    // CHECK EXPIRATION
     // =========================
 
-    const downloadQRCode = () => {
-        if (!qrCode) return;
+    const isExpired = (expiresAt) => {
 
-        try {
-            const link = document.createElement("a");
-
-            link.href = qrCode;
-            link.download = "short-url-qr-code.png";
-
-            document.body.appendChild(link);
-
-            link.click();
-
-            document.body.removeChild(link);
-
-        } catch (error) {
-            console.error("QR download error:", error);
-
-            alert("Failed to download QR code");
+        if (!expiresAt) {
+            return false;
         }
+
+        return new Date(expiresAt) <= new Date();
     };
 
     // =========================
-    // JSX
+    // FORMAT DATE
+    // =========================
+
+    const formatDate = (date) => {
+
+        if (!date) {
+            return "Never";
+        }
+
+        return new Date(date).toLocaleString();
+    };
+
+    // =========================
+    // UI
     // =========================
 
     return (
@@ -227,15 +313,15 @@ function Dashboard() {
                 NAVBAR
             ========================= */}
 
-            <nav className="bg-white shadow">
+            <div className="bg-white shadow">
 
-                <div className="max-w-6xl mx-auto flex justify-between items-center p-5">
+                <div className="max-w-7xl mx-auto px-4 py-5 flex justify-between items-center">
 
-                    <h1 className="text-2xl font-bold">
+                    <h1 className="text-3xl font-bold">
                         URL Shortener
                     </h1>
 
-                    <div className="flex gap-5 items-center">
+                    <div className="flex items-center gap-4">
 
                         <Link
                             to="/profile"
@@ -255,95 +341,211 @@ function Dashboard() {
 
                 </div>
 
-            </nav>
+            </div>
+
 
             {/* =========================
-                MAIN CONTENT
+                MAIN
             ========================= */}
 
-            <main className="max-w-6xl mx-auto mt-10 px-4">
+            <div className="max-w-7xl mx-auto px-4 py-10">
 
                 {/* =========================
-                    CREATE URL
+                    CREATE URL CARD
                 ========================= */}
 
-                <div className="bg-white p-6 rounded-lg shadow">
+                <div className="bg-white rounded-xl shadow p-6">
 
-                    <h2 className="text-xl font-semibold mb-4">
+                    <h2 className="text-2xl font-bold mb-6">
                         Create Short URL
                     </h2>
 
                     <form
                         onSubmit={createShortUrl}
-                        className="flex gap-4"
+                        className="space-y-5"
                     >
 
-                        <input
-                            type="url"
-                            placeholder="https://example.com"
-                            value={originalUrl}
-                            onChange={(e) =>
-                                setOriginalUrl(e.target.value)
-                            }
-                            className="flex-1 border border-gray-300 p-3 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        {/* ORIGINAL URL */}
+
+                        <div>
+
+                            <label className="block font-medium mb-2">
+                                Original URL
+                            </label>
+
+                            <input
+                                type="url"
+                                placeholder="https://example.com"
+                                value={originalUrl}
+                                onChange={(e) =>
+                                    setOriginalUrl(
+                                        e.target.value
+                                    )
+                                }
+                                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                required
+                            />
+
+                        </div>
+
+
+                        {/* CUSTOM ALIAS */}
+
+                        <div>
+
+                            <label className="block font-medium mb-2">
+
+                                Custom Alias
+
+                                <span className="text-gray-500 text-sm ml-2">
+                                    (optional)
+                                </span>
+
+                            </label>
+
+                            <input
+                                type="text"
+                                placeholder="my-link"
+                                value={customCode}
+                                onChange={(e) =>
+                                    setCustomCode(
+                                        e.target.value
+                                    )
+                                }
+                                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+
+                            <p className="text-sm text-gray-500 mt-2">
+
+                                Example:
+
+                                {" "}
+
+                                {BASE_URL}/my-link
+
+                            </p>
+
+                        </div>
+
+
+                        {/* EXPIRATION */}
+
+                        <div>
+
+                            <label className="block font-medium mb-2">
+                                Expiration
+                            </label>
+
+                            <select
+                                value={expirationDays}
+                                onChange={(e) =>
+                                    setExpirationDays(
+                                        e.target.value
+                                    )
+                                }
+                                className="w-full border border-gray-300 p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+
+                                <option value="">
+                                    Never expires
+                                </option>
+
+                                <option value="1">
+                                    1 day
+                                </option>
+
+                                <option value="7">
+                                    7 days
+                                </option>
+
+                                <option value="30">
+                                    30 days
+                                </option>
+
+                                <option value="90">
+                                    90 days
+                                </option>
+
+                                <option value="365">
+                                    1 year
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        {/* SUBMIT */}
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 rounded"
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-3 rounded-lg font-medium"
                         >
+
                             {loading
                                 ? "Creating..."
-                                : "Shorten"
+                                : "Shorten URL"
                             }
+
                         </button>
 
                     </form>
 
                 </div>
 
+
                 {/* =========================
-                    URL TABLE
+                    URL LIST
                 ========================= */}
 
-                <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
+                <div className="mt-10">
 
-                    <div className="p-5 border-b">
+                    <h2 className="text-2xl font-bold mb-5">
+                        Your URLs
+                    </h2>
 
-                        <h2 className="text-xl font-semibold">
-                            Your URLs
-                        </h2>
 
-                    </div>
+                    <div className="bg-white rounded-xl shadow overflow-x-auto">
 
-                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1000px]">
 
-                        <table className="w-full">
+                            {/* HEADER */}
 
                             <thead className="bg-gray-200">
 
                                 <tr>
 
-                                    <th className="p-4 text-left">
+                                    <th className="text-left p-4">
                                         Original URL
                                     </th>
 
-                                    <th className="p-4 text-left">
+                                    <th className="text-left p-4">
                                         Short URL
                                     </th>
 
-                                    <th className="p-4">
+                                    <th className="text-center p-4">
                                         Clicks
                                     </th>
 
-                                    <th className="p-4">
+                                    <th className="text-center p-4">
+                                        Expiration
+                                    </th>
+
+                                    <th className="text-center p-4">
+                                        Status
+                                    </th>
+
+                                    <th className="text-center p-4">
                                         Actions
                                     </th>
 
                                 </tr>
 
                             </thead>
+
+
+                            {/* BODY */}
 
                             <tbody>
 
@@ -352,7 +554,7 @@ function Dashboard() {
                                     <tr>
 
                                         <td
-                                            colSpan="4"
+                                            colSpan="6"
                                             className="text-center p-10 text-gray-500"
                                         >
                                             No URLs found
@@ -362,112 +564,162 @@ function Dashboard() {
 
                                 ) : (
 
-                                    urls.map((url) => (
+                                    urls.map((url) => {
 
-                                        <tr
-                                            key={url._id}
-                                            className="border-t hover:bg-gray-50"
-                                        >
+                                        const expired =
+                                            isExpired(
+                                                url.expiresAt
+                                            );
 
-                                            {/* Original URL */}
+                                        const shortUrl =
+                                            `${BASE_URL}/${url.shortCode}`;
 
-                                            <td className="p-4 max-w-xs">
+                                        return (
 
-                                                <div className="break-all">
-                                                    {url.originalUrl}
-                                                </div>
+                                            <tr
+                                                key={url._id}
+                                                className="border-t hover:bg-gray-50"
+                                            >
 
-                                            </td>
+                                                {/* ORIGINAL */}
 
-                                            {/* Short URL */}
+                                                <td className="p-4 max-w-xs">
 
-                                            <td className="p-4 max-w-xs">
+                                                    <div className="break-all">
+                                                        {url.originalUrl}
+                                                    </div>
 
-                                                <a
-                                                    href={`${BASE_URL}/${url.shortCode}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="text-blue-600 hover:underline break-all"
-                                                >
-                                                    {`${BASE_URL}/${url.shortCode}`}
-                                                </a>
+                                                </td>
 
-                                            </td>
 
-                                            {/* Clicks */}
+                                                {/* SHORT URL */}
 
-                                            <td className="p-4 text-center">
-                                                {url.clicks}
-                                            </td>
+                                                <td className="p-4 max-w-xs">
 
-                                            {/* Actions */}
-
-                                            <td className="p-4">
-
-                                                <div className="flex gap-3 items-center justify-center flex-wrap">
-
-                                                    {/* COPY */}
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            copyUrl(
-                                                                url.shortCode
-                                                            )
-                                                        }
-                                                        className="text-green-600 hover:underline"
+                                                    <a
+                                                        href={shortUrl}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className={`break-all hover:underline ${
+                                                            expired
+                                                                ? "text-gray-400"
+                                                                : "text-blue-600"
+                                                        }`}
                                                     >
-                                                        Copy
-                                                    </button>
+                                                        {shortUrl}
+                                                    </a>
 
-                                                    {/* QR CODE */}
+                                                </td>
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            openQRCode(
-                                                                url._id
-                                                            )
-                                                        }
-                                                        disabled={qrLoading}
-                                                        className="text-purple-600 hover:underline disabled:text-gray-400"
-                                                    >
-                                                        {qrLoading
-                                                            ? "Generating..."
-                                                            : "QR Code"
-                                                        }
-                                                    </button>
 
-                                                    {/* ANALYTICS */}
+                                                {/* CLICKS */}
 
-                                                    <Link
-                                                        to={`/analytics/${url._id}`}
-                                                        className="text-blue-600 hover:underline"
-                                                    >
-                                                        Analytics
-                                                    </Link>
+                                                <td className="text-center p-4">
 
-                                                    {/* DELETE */}
+                                                    {url.clicks || 0}
 
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            deleteUrl(
-                                                                url._id
-                                                            )
-                                                        }
-                                                        className="text-red-600 hover:underline"
-                                                    >
-                                                        Delete
-                                                    </button>
+                                                </td>
 
-                                                </div>
 
-                                            </td>
+                                                {/* EXPIRATION */}
 
-                                        </tr>
+                                                <td className="text-center p-4">
 
-                                    ))
+                                                    {formatDate(
+                                                        url.expiresAt
+                                                    )}
+
+                                                </td>
+
+
+                                                {/* STATUS */}
+
+                                                <td className="text-center p-4">
+
+                                                    {expired ? (
+
+                                                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">
+                                                            Expired
+                                                        </span>
+
+                                                    ) : (
+
+                                                        <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                                                            Active
+                                                        </span>
+
+                                                    )}
+
+                                                </td>
+
+
+                                                {/* ACTIONS */}
+
+                                                <td className="p-4">
+
+                                                    <div className="flex flex-wrap justify-center gap-2">
+
+                                                        {/* COPY */}
+
+                                                        <button
+                                                            onClick={() =>
+                                                                copyUrl(
+                                                                    url.shortCode
+                                                                )
+                                                            }
+                                                            disabled={expired}
+                                                            className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-3 py-1 rounded"
+                                                        >
+                                                            Copy
+                                                        </button>
+
+
+                                                        {/* QR */}
+
+                                                        <button
+                                                            onClick={() =>
+                                                                openQRCode(
+                                                                    url._id
+                                                                )
+                                                            }
+                                                            disabled={expired}
+                                                            className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white px-3 py-1 rounded"
+                                                        >
+                                                            QR
+                                                        </button>
+
+
+                                                        {/* ANALYTICS */}
+
+                                                        <Link
+                                                            to={`/analytics/${url._id}`}
+                                                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded"
+                                                        >
+                                                            Analytics
+                                                        </Link>
+
+
+                                                        {/* DELETE */}
+
+                                                        <button
+                                                            onClick={() =>
+                                                                deleteUrl(
+                                                                    url._id
+                                                                )
+                                                            }
+                                                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded"
+                                                        >
+                                                            Delete
+                                                        </button>
+
+                                                    </div>
+
+                                                </td>
+
+                                            </tr>
+
+                                        );
+                                    })
 
                                 )}
 
@@ -479,87 +731,74 @@ function Dashboard() {
 
                 </div>
 
-            </main>
+            </div>
+
 
             {/* =========================
-                QR CODE MODAL
+                QR MODAL
             ========================= */}
 
-            {qrCode && (
+            {showQR && (
 
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-                    onClick={closeQRCode}
-                >
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
 
-                    <div
-                        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className="bg-white rounded-xl p-6 w-full max-w-sm text-center shadow-xl">
 
-                        {/* Header */}
+                        <h2 className="text-2xl font-bold mb-5">
+                            Scan QR Code
+                        </h2>
 
-                        <div className="flex items-center justify-between mb-5">
 
-                            <h2 className="text-2xl font-bold">
-                                Your QR Code
-                            </h2>
+                        {/* LOADING */}
 
-                            <button
-                                type="button"
-                                onClick={closeQRCode}
-                                className="text-2xl text-gray-500 hover:text-black"
-                            >
-                                ×
-                            </button>
+                        {qrLoading ? (
 
-                        </div>
+                            <div className="py-20">
 
-                        {/* QR */}
-
-                        <div className="flex justify-center">
-
-                            <div className="rounded-xl border bg-white p-4">
-
-                                <img
-                                    src={qrCode}
-                                    alt="QR Code"
-                                    width="256"
-                                    height="256"
-                                    className="block"
-                                />
+                                <p className="text-gray-600">
+                                    Generating QR Code...
+                                </p>
 
                             </div>
 
-                        </div>
+                        ) : (
 
-                        {/* Short URL */}
+                            <>
 
-                        <p className="mt-5 text-center text-sm text-gray-600 break-all">
-                            {qrShortUrl}
-                        </p>
+                                {/* QR IMAGE */}
 
-                        {/* Buttons */}
+                                {qrCode && (
 
-                        <div className="mt-6 flex gap-3">
+                                    <img
+                                        src={qrCode}
+                                        alt="QR Code"
+                                        className="w-64 h-64 mx-auto"
+                                    />
 
-                            <button
-                                type="button"
-                                onClick={downloadQRCode}
-                                className="flex-1 rounded-lg bg-blue-600 px-4 py-3 text-white hover:bg-blue-700"
-                            >
-                                Download QR
-                            </button>
+                                )}
 
-                            <button
-                                type="button"
-                                onClick={closeQRCode}
-                                className="flex-1 rounded-lg bg-gray-200 px-4 py-3 hover:bg-gray-300"
-                            >
-                                Close
-                            </button>
 
-                        </div>
+                                {/* SHORT URL */}
+
+                                <p className="text-sm text-gray-600 mt-4 break-all">
+
+                                    {qrShortUrl}
+
+                                </p>
+
+                            </>
+
+                        )}
+
+
+                        {/* CLOSE */}
+
+                        <button
+                            onClick={closeQR}
+                            className="mt-6 bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg"
+                        >
+                            Close
+                        </button>
 
                     </div>
 
